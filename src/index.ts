@@ -6,10 +6,29 @@ import { setupOctokit } from "./octokit.ts";
 import readChangesetState from "./readChangesetState.ts";
 import { runPublish, runVersion } from "./run.ts";
 import { fileExists } from "./utils.ts";
+import axios, { isAxiosError } from "axios";
 
 const getOptionalInput = (name: string) => core.getInput(name) || undefined;
 
+async function validateSubscription(): Promise<void> {
+  const API_URL = `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/subscription`;
+
+  try {
+      await axios.get(API_URL, { timeout: 3000 });
+  } catch (error) {
+      if (isAxiosError(error) && error.response) {
+          core.error(
+              "Subscription is not valid. Reach out to support@stepsecurity.io"
+          );
+          process.exit(1);
+      } else {
+          core.info("Timeout or API not reachable. Continuing to next step.");
+      }
+  }
+}
+
 (async () => {
+  await validateSubscription()
   let githubToken = process.env.GITHUB_TOKEN;
 
   if (!githubToken) {
