@@ -11,6 +11,10 @@ on:
         description: "Specify a base branch"
         required: false
         default: "main"
+      package_manager:
+        description: "Specify package manager (npm or yarn)"
+        required: false
+        default: "yarn"
       script:
         description: "Specify the build script to run"
         required: false
