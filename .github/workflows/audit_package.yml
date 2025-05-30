@@ -1,4 +1,4 @@
-name: NPM Audit Fix Run
+name: Yarn Audit Fix Run
 
 on:
   workflow_dispatch:
