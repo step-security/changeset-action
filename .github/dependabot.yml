@@ -1,0 +1,41 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /__fixtures__/ignored-package
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /__fixtures__/ignored-package/packages/pkg-a
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /__fixtures__/ignored-package/packages/pkg-b
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /__fixtures__/simple-project
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /__fixtures__/simple-project/packages/pkg-a
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /__fixtures__/simple-project/packages/pkg-b
+    schedule:
+      interval: daily
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
