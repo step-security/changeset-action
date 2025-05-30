@@ -27,7 +27,7 @@ jobs:
   audit-fix:
     uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1
     with:
-      force: ${{ inputs.force || false }}
+      package_manager: "yarn"
       base_branch: ${{ inputs.base_branch || 'main' }}
       script: ${{ inputs.script || 'yarn build' }}
 
