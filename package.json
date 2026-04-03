@@ -11,7 +11,7 @@
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
-    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-terser": "^1.0.0",
     "@types/node": "^22.15.17",
     "@types/semver": "^7.5.0",
     "builtin-modules": "^5.0.0",
@@ -34,7 +34,7 @@
     "node": ">= 24"
   },
   "dependencies": {
-    "@actions/core": "^1.11.1",
+    "@actions/core": "^2.0.0",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.1",
     "@changesets/ghcommit": "^2.0.0",
