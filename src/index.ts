@@ -29,7 +29,9 @@ async function validateSubscription(): Promise<void> {
 
 (async () => {
   await validateSubscription()
-  let githubToken = process.env.GITHUB_TOKEN;
+  // to maintain compatibility with workflows created before github-token input was introduced
+  // it's important to prefer the explicitly set GITHUB_TOKEN over the default token coming from github.token
+  let githubToken = process.env.GITHUB_TOKEN || core.getInput("github-token");
 
   if (!githubToken) {
     core.setFailed("Please add the GITHUB_TOKEN to the changesets action");
@@ -133,6 +135,7 @@ async function validateSubscription(): Promise<void> {
 
       const result = await runPublish({
         script: publishScript,
+        githubToken,
         git,
         octokit,
         createGithubReleases: core.getBooleanInput("createGithubReleases"),
@@ -155,6 +158,7 @@ async function validateSubscription(): Promise<void> {
       const octokit = setupOctokit(githubToken);
       const { pullRequestNumber } = await runVersion({
         script: getOptionalInput("version"),
+        githubToken,
         git,
         octokit,
         prTitle: getOptionalInput("title"),
