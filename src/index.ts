@@ -70,6 +70,7 @@ async function validateSubscription(): Promise<void> {
   }
 
   const cwd = path.resolve(getOptionalInput("cwd") ?? "");
+  core.info(`using resolved cwd: ${cwd}`);
 
   const octokit = setupOctokit(githubToken);
   const commitMode = getOptionalInput("commitMode") ?? "git-cli";
@@ -95,7 +96,7 @@ async function validateSubscription(): Promise<void> {
     `machine github.com\nlogin github-actions[bot]\npassword ${githubToken}`
   );
 
-  let { changesets } = await readChangesetState();
+  let { changesets } = await readChangesetState(cwd);
 
   let publishScript = core.getInput("publish");
   let hasChangesets = changesets.length !== 0;
