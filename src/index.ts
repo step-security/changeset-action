@@ -74,8 +74,13 @@ async function validateSubscription(): Promise<void> {
 
   const octokit = setupOctokit(githubToken);
   const commitMode = getOptionalInput("commitMode") ?? "git-cli";
+  const prDraft = getOptionalInput("prDraft");
   if (commitMode !== "git-cli" && commitMode !== "github-api") {
     core.setFailed(`Invalid commit mode: ${commitMode}`);
+    return;
+  }
+  if (prDraft !== undefined && prDraft !== "always" && prDraft !== "create") {
+    core.setFailed(`Invalid prDraft: ${prDraft}`);
     return;
   }
   const git = new Git({
@@ -197,6 +202,7 @@ async function validateSubscription(): Promise<void> {
         prTitle: getOptionalInput("title"),
         commitMessage: getOptionalInput("commit"),
         hasPublishScript,
+        prDraft,
         branch: getOptionalInput("branch"),
       });
 
