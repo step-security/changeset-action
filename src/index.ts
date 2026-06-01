@@ -193,6 +193,7 @@ async function validateSubscription(): Promise<void> {
         githubToken,
         git,
         octokit,
+        cwd,
         prTitle: getOptionalInput("title"),
         commitMessage: getOptionalInput("commit"),
         hasPublishScript,
