@@ -70,11 +70,17 @@ async function validateSubscription(): Promise<void> {
   }
 
   const cwd = path.resolve(getOptionalInput("cwd") ?? "");
+  core.info(`using resolved cwd: ${cwd}`);
 
   const octokit = setupOctokit(githubToken);
   const commitMode = getOptionalInput("commitMode") ?? "git-cli";
+  const prDraft = getOptionalInput("prDraft");
   if (commitMode !== "git-cli" && commitMode !== "github-api") {
     core.setFailed(`Invalid commit mode: ${commitMode}`);
+    return;
+  }
+  if (prDraft !== undefined && prDraft !== "always" && prDraft !== "create") {
+    core.setFailed(`Invalid prDraft: ${prDraft}`);
     return;
   }
   const git = new Git({
@@ -95,7 +101,7 @@ async function validateSubscription(): Promise<void> {
     `machine github.com\nlogin github-actions[bot]\npassword ${githubToken}`
   );
 
-  let { changesets } = await readChangesetState();
+  let { changesets } = await readChangesetState(cwd);
 
   let publishScript = core.getInput("publish");
   let hasChangesets = changesets.length !== 0;
@@ -192,9 +198,11 @@ async function validateSubscription(): Promise<void> {
         githubToken,
         git,
         octokit,
+        cwd,
         prTitle: getOptionalInput("title"),
         commitMessage: getOptionalInput("commit"),
         hasPublishScript,
+        prDraft,
         branch: getOptionalInput("branch"),
       });
 
