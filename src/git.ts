@@ -15,7 +15,7 @@ const push = async (branch: string, options: GitOptions) => {
 
 const switchToMaybeExistingBranch = async (
   branch: string,
-  options: GitOptions
+  options: GitOptions,
 ) => {
   let { stderr } = await getExecOutput("git", ["checkout", branch], {
     ignoreReturnCode: true,
@@ -42,7 +42,7 @@ const checkIfClean = async (options: GitOptions): Promise<boolean> => {
   const { stdout } = await getExecOutput(
     "git",
     ["status", "--porcelain"],
-    options
+    options,
   );
   return !stdout.length;
 };
@@ -72,7 +72,7 @@ export class Git {
       ],
       {
         cwd: this.cwd,
-      }
+      },
     );
   }
 
