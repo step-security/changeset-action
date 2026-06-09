@@ -186,6 +186,19 @@ async function validateSubscription(): Promise<void> {
           JSON.stringify(result.publishedPackages)
         );
       }
+
+      if (result.exitCode !== 0) {
+        core.error(
+          `Publish command exited with code ${result.exitCode}${
+            result.published
+              ? `, but some packages were published: ${result.publishedPackages
+                  .map((p) => `${p.name}@${p.version}`)
+                  .join(", ")}`
+              : ""
+          }`,
+        );
+        process.exit(result.exitCode);
+      }
       return;
     }
     case hasChangesets && !hasNonEmptyChangesets:
