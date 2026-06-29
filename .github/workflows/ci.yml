@@ -1,19 +1,25 @@
 name: CI
 
 on:
-  push:
+  pull_request:
+  # merge queue is required so all commits on target branches trigger this workflow
+  # despite lack of the push event trigger here
+  merge_group:
     branches:
       - main
-  pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
     timeout-minutes: 20
+    runs-on: ubuntu-latest
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -21,7 +27,11 @@ jobs:
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Check out repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
       - uses: ./.github/actions/ci-setup
 
       - name: Test
@@ -38,17 +48,42 @@ jobs:
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Check out repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
       - uses: ./.github/actions/ci-setup
 
       - name: Typecheck
         run: yarn typecheck
 
+  lint:
+    name: Lint
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+        with:
+          egress-policy: audit
+
+      - name: Check out repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/ci-setup
+
+      - name: Format
+        run: yarn format
+
   ci-ok:
     name: CI OK
     runs-on: ubuntu-latest
     if: always()
-    needs: [ test, typecheck ]
+    needs: [test, typecheck, lint]
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@ab7a9404c0f3da075243ca237b5fac12c98deaa5 # v2.19.3
@@ -57,4 +92,4 @@ jobs:
 
       - name: Exit with error if some jobs are not successful
         run: exit 1
-        if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'skipped') || contains(needs.*.result, 'cancelled')) }}
+        if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}

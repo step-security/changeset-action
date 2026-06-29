@@ -8,7 +8,6 @@ type GitOptions = {
   cwd: string;
 };
 
-
 const push = async (branch: string, options: GitOptions) => {
   await exec("git", ["push", "origin", `HEAD:${branch}`, "--force"], options);
 };

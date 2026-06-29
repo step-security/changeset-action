@@ -1,65 +1,65 @@
-import * as core from "@actions/core";
-import fs from "node:fs/promises";
 import * as fsSync from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
+import * as core from "@actions/core";
+import axios, { isAxiosError } from "axios";
 import { Git } from "./git.ts";
 import { setupOctokit } from "./octokit.ts";
 import readChangesetState from "./readChangesetState.ts";
 import { runPublish, runVersion } from "./run.ts";
 import { fileExists } from "./utils.ts";
-import axios, { isAxiosError } from "axios";
 
 const getOptionalInput = (name: string) => core.getInput(name) || undefined;
 
 async function validateSubscription(): Promise<void> {
-  const eventPath = process.env.GITHUB_EVENT_PATH
-  let repoPrivate: boolean | undefined
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  let repoPrivate: boolean | undefined;
 
   if (eventPath && fsSync.existsSync(eventPath)) {
-    const eventData = JSON.parse(fsSync.readFileSync(eventPath, 'utf8'))
-    repoPrivate = eventData?.repository?.private
+    const eventData = JSON.parse(fsSync.readFileSync(eventPath, "utf8"));
+    repoPrivate = eventData?.repository?.private;
   }
 
-  const upstream = 'changesets/action'
-  const action = process.env.GITHUB_ACTION_REPOSITORY
+  const upstream = "changesets/action";
+  const action = process.env.GITHUB_ACTION_REPOSITORY;
   const docsUrl =
-    'https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'
+    "https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions";
 
-  core.info('')
-  core.info('\u001b[1;36mStepSecurity Maintained Action\u001b[0m')
-  core.info(`Secure drop-in replacement for ${upstream}`)
+  core.info("");
+  core.info("\u001b[1;36mStepSecurity Maintained Action\u001b[0m");
+  core.info(`Secure drop-in replacement for ${upstream}`);
   if (repoPrivate === false)
-    core.info('\u001b[32m\u2713 Free for public repositories\u001b[0m')
-  core.info(`\u001b[36mLearn more:\u001b[0m ${docsUrl}`)
-  core.info('')
+    core.info("\u001b[32m\u2713 Free for public repositories\u001b[0m");
+  core.info(`\u001b[36mLearn more:\u001b[0m ${docsUrl}`);
+  core.info("");
 
-  if (repoPrivate === false) return
+  if (repoPrivate === false) return;
 
-  const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
-  const body: Record<string, string> = {action: action || ''}
-  if (serverUrl !== 'https://github.com') body.ghes_server = serverUrl
+  const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+  const body: Record<string, string> = { action: action || "" };
+  if (serverUrl !== "https://github.com") body.ghes_server = serverUrl;
   try {
     await axios.post(
       `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/maintained-actions-subscription`,
       body,
-      {timeout: 3000}
-    )
+      { timeout: 3000 },
+    );
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 403) {
       core.error(
-        `\u001b[1;31mThis action requires a StepSecurity subscription for private repositories.\u001b[0m`
-      )
+        `\u001b[1;31mThis action requires a StepSecurity subscription for private repositories.\u001b[0m`,
+      );
       core.error(
-        `\u001b[31mLearn how to enable a subscription: ${docsUrl}\u001b[0m`
-      )
-      process.exit(1)
+        `\u001b[31mLearn how to enable a subscription: ${docsUrl}\u001b[0m`,
+      );
+      process.exit(1);
     }
-    core.info('Timeout or API not reachable. Continuing to next step.')
+    core.info("Timeout or API not reachable. Continuing to next step.");
   }
 }
 
 (async () => {
-  await validateSubscription()
+  await validateSubscription();
   // to maintain compatibility with workflows created before github-token input was introduced
   // it's important to prefer the explicitly set GITHUB_TOKEN over the default token coming from github.token
   let githubToken = process.env.GITHUB_TOKEN || core.getInput("github-token");
@@ -98,7 +98,7 @@ async function validateSubscription(): Promise<void> {
   core.info("setting GitHub credentials");
   await fs.writeFile(
     `${process.env.HOME}/.netrc`,
-    `machine github.com\nlogin github-actions[bot]\npassword ${githubToken}`
+    `machine github.com\nlogin github-actions[bot]\npassword ${githubToken}`,
   );
 
   let { changesets } = await readChangesetState(cwd);
@@ -106,7 +106,7 @@ async function validateSubscription(): Promise<void> {
   let publishScript = core.getInput("publish");
   let hasChangesets = changesets.length !== 0;
   const hasNonEmptyChangesets = changesets.some(
-    (changeset) => changeset.releases.length > 0
+    (changeset) => changeset.releases.length > 0,
   );
   let hasPublishScript = !!publishScript;
 
@@ -117,12 +117,12 @@ async function validateSubscription(): Promise<void> {
   switch (true) {
     case !hasChangesets && !hasPublishScript:
       core.info(
-        "No changesets present or were removed by merging release PR. Not publishing because no publish script found."
+        "No changesets present or were removed by merging release PR. Not publishing because no publish script found.",
       );
       return;
     case !hasChangesets && hasPublishScript: {
       core.info(
-        "No changesets found. Attempting to publish any unpublished packages to npm"
+        "No changesets found. Attempting to publish any unpublished packages to npm",
       );
 
       if (process.env.NPM_TOKEN) {
@@ -137,24 +137,24 @@ async function validateSubscription(): Promise<void> {
           });
           if (authLine) {
             core.info(
-              "Found existing auth token for the npm registry in the user .npmrc file"
+              "Found existing auth token for the npm registry in the user .npmrc file",
             );
           } else {
             core.info(
-              "Didn't find existing auth token for the npm registry in the user .npmrc file, creating one"
+              "Didn't find existing auth token for the npm registry in the user .npmrc file, creating one",
             );
             await fs.appendFile(
               userNpmrcPath,
-              `\n//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}\n`
+              `\n//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}\n`,
             );
           }
         } else {
           core.info(
-            "No user .npmrc file found, creating one with NPM_TOKEN used as auth token"
+            "No user .npmrc file found, creating one with NPM_TOKEN used as auth token",
           );
           await fs.writeFile(
             userNpmrcPath,
-            `//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}\n`
+            `//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}\n`,
           );
         }
       } else if (
@@ -162,11 +162,11 @@ async function validateSubscription(): Promise<void> {
         process.env.ACTIONS_ID_TOKEN_REQUEST_URL
       ) {
         core.info(
-          "No NPM_TOKEN found, but OIDC is available - using npm trusted publishing"
+          "No NPM_TOKEN found, but OIDC is available - using npm trusted publishing",
         );
       } else {
         core.info(
-          "No NPM_TOKEN or OIDC available - assuming npm is already authenticated"
+          "No NPM_TOKEN or OIDC available - assuming npm is already authenticated",
         );
       }
 
@@ -183,7 +183,7 @@ async function validateSubscription(): Promise<void> {
         core.setOutput("published", "true");
         core.setOutput(
           "publishedPackages",
-          JSON.stringify(result.publishedPackages)
+          JSON.stringify(result.publishedPackages),
         );
       }
 
