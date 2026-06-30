@@ -12,6 +12,8 @@ export default defineConfig({
     cleanDir: true,
     minify: true,
     comments: false,
+    chunkFileNames: "[name].js",
+    entryFileNames: "[name].js",
   },
   platform: "node",
 });
