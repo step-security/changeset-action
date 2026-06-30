@@ -1,5 +1,5 @@
 {
-  "name": "@step-security/action",
+  "name": "@step-security/changeset-action",
   "version": "1.9.0",
   "license": "MIT",
   "type": "module",
