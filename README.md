@@ -52,16 +52,13 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Setup Node.js 26
         uses: actions/setup-node@v6
         with:
           node-version: 26
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: yarn install --frozen-lockfile
 
       - name: Create Release Pull Request
         uses: step-security/changeset-action@v1
@@ -89,16 +86,13 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Setup Node.js 26
         uses: actions/setup-node@v6
         with:
           node-version: 26
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: yarn install --frozen-lockfile
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
@@ -156,16 +150,13 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Setup Node.js 26
         uses: actions/setup-node@v6
         with:
           node-version: 26
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: yarn install --frozen-lockfile
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
@@ -201,16 +192,13 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v6
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
       - name: Setup Node.js 26
         uses: actions/setup-node@v6
         with:
           node-version: 26
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: yarn install --frozen-lockfile
 
       - name: Create Release Pull Request
         uses: step-security/changeset-action@v1
