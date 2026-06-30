@@ -4,6 +4,11 @@
 
 This action for [Changesets](https://github.com/changesets/changesets) creates a pull request with all of the package versions updated and changelogs updated and when there are new changesets on [your configured `baseBranch`](https://github.com/changesets/changesets/blob/main/docs/config-file-options.md#basebranch-git-branch-name), the PR will be updated. When you're ready, you can merge the pull request and you can either publish the packages to npm manually or setup the action to do it for you.
 
+There are also sub-actions hosted in this repository. Check out their respective READMEs for more details:
+
+- [pr-status](./pr-status/README.md): Generate changeset status in PRs.
+- [pr-comment](./pr-comment/README.md): Comment on PRs.
+
 ## Usage
 
 ### Inputs
@@ -23,7 +28,7 @@ This action for [Changesets](https://github.com/changesets/changesets) creates a
 - published - A boolean value to indicate whether a publishing has happened or not
 - publishedPackages - A JSON array to present the published packages. The format is `[{"name": "@xx/xx", "version": "1.2.0"}, {"name": "@xx/xy", "version": "0.8.9"}]`
 
-### Example workflow:
+### Example workflow
 
 #### Without Publishing
 
@@ -45,18 +50,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v3
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 26
 
       - name: Install Dependencies
-        run: yarn
+        run: yarn install --frozen-lockfile
 
       - name: Create Release Pull Request
-        uses: step-security/action@v1
+        uses: step-security/changeset-action@v1
 ```
 
 #### With Publishing
@@ -79,22 +84,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
-      - name: Setup Node.js 20.x
-        uses: actions/setup-node@v3
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v6
         with:
-          node-version: 20.x
+          node-version: 26
 
       - name: Install Dependencies
-        run: yarn
+        run: yarn install --frozen-lockfile
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
-        uses: step-security/action@v1
+        uses: step-security/changeset-action@v1
         with:
           # This expects you to have a script called release which does a build for your packages and calls changeset publish
-          publish: yarn release
+          publish: pnpm release
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -106,7 +111,7 @@ jobs:
 
 By default the GitHub Action creates a `.npmrc` file with the following content:
 
-```
+```txt
 //registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}
 ```
 
@@ -143,24 +148,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
-      - name: Setup Node.js 20.x
-        uses: actions/setup-node@v3
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v6
         with:
-          node-version: 20.x
+          node-version: 26
 
       - name: Install Dependencies
-        run: yarn
+        run: yarn install --frozen-lockfile
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
-        uses: step-security/action@v1
+        uses: step-security/changeset-action@v1
 
       - name: Publish
         if: steps.changesets.outputs.hasChangesets == 'false'
         # You can do something when a publish should happen.
-        run: yarn publish
+        run: pnpm publish
 ```
 
 #### With version script
@@ -185,21 +190,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
-      - name: Setup Node.js 20.x
-        uses: actions/setup-node@v3
+      - name: Setup Node.js 26
+        uses: actions/setup-node@v6
         with:
-          node-version: 20.x
+          node-version: 26
 
       - name: Install Dependencies
-        run: yarn
+        run: yarn install --frozen-lockfile
 
       - name: Create Release Pull Request
-        uses: step-security/action@v1
+        uses: step-security/changeset-action@v1
         with:
           # this expects you to have a npm script called version that runs some logic and then calls `changeset version`.
-          version: yarn version
+          version: pnpm version
 ```
 
 #### With Yarn 2 / Plug'n'Play
@@ -207,8 +212,8 @@ jobs:
 If you are using [Yarn Plug'n'Play](https://yarnpkg.com/features/pnp), you should use a custom `version` command so that the action can resolve the `changeset` CLI:
 
 ```yaml
-- uses: step-security/action@v1
+- uses: step-security/changeset-action@v1
   with:
     version: yarn changeset version
-    ...
+    # ...
 ```
