@@ -1,13 +1,13 @@
 import * as core from "@actions/core";
 import { GitHub } from "../github.ts";
 import { runVersion } from "../run.ts";
+import { validateSubscription } from "../subscription.ts";
 import {
   getOptionalInput,
   getRequiredInput,
   throwOnRemovedCommitModeInput,
   validateChangesetsCliVersion,
 } from "../utils.ts";
-import { validateSubscription } from "../subscription.ts";
 
 try {
   await main();

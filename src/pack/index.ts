@@ -3,13 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import artifact from "@actions/artifact";
 import * as core from "@actions/core";
+import { validateSubscription } from "../subscription.ts";
 import {
   downloadArtifact,
   execChangesetsCli,
   getOptionalInput,
   validateChangesetsCliVersion,
 } from "../utils.ts";
-import { validateSubscription } from "../subscription.ts";
 
 try {
   await main();
