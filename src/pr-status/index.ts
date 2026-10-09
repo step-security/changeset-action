@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
+import { validateSubscription } from "../subscription.ts";
 import { getCommentMessage } from "./message.ts";
 
 try {
@@ -9,6 +10,7 @@ try {
 }
 
 async function main() {
+  await validateSubscription();
   const context = github.context.payload.pull_request;
   if (!context) {
     throw new Error(

@@ -1,5 +1,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
+import { validateSubscription } from "../subscription.ts";
+import { getOptionalInput, getRequiredInput } from "../utils.ts";
 
 type Octokit = ReturnType<typeof github.getOctokit>;
 type CreateCommentParams = NonNullable<
@@ -16,6 +18,7 @@ try {
 }
 
 async function main() {
+  await validateSubscription();
   const context = github.context.payload.pull_request;
   if (!context) {
     throw new Error(
@@ -23,9 +26,9 @@ async function main() {
     );
   }
 
-  const githubToken = core.getInput("github-token", { required: true });
-  const body = core.getInput("body", { required: true });
-  const updateId = core.getInput("update-id");
+  const githubToken = getRequiredInput("github-token");
+  const body = getRequiredInput("body");
+  const updateId = getOptionalInput("update-id");
 
   const commentMarker = updateId ? getCommentMarker(updateId) : null;
   const commentBody = commentMarker ? `${commentMarker}\n\n${body}` : body;
