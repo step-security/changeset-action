@@ -2,22 +2,19 @@
 
 # Changesets GitHub Action
 
-> [!IMPORTANT]
-> This is the development branch for `changesets/action` v2 compatible with Changesets v3. For the v1 code compatible with Changesets v2, check out the [`maintenance/v1`](https://github.com/changesets/action/tree/maintenance/v1) branch.
-
 This repo contains a collection of GitHub Actions for [Changesets](https://changesets.dev). Check out the [Automating Changesets](https://changesets.dev/guide/automating) guide to learn how to use these actions to automate your workflow.
 
-- [changesets/action](./README.md): (This README. See below for details.)
-- [changesets/action/select-mode](./select-mode/README.md): Select the mode to run a Changesets workflow.
-- [changesets/action/version](./version/README.md): Version packages and create or update a pull request with the changes.
-- [changesets/action/pack](./pack/README.md): Pack publishable packages into tarballs.
-- [changesets/action/publish](./publish/README.md): Publish packages to npm.
-- [changesets/action/pr-status](./pr-status/README.md): Generate changeset status in PRs.
-- [changesets/action/pr-comment](./pr-comment/README.md): Create or update comments on PRs.
+- [step-security/changeset-action](./README.md): (This README. See below for details.)
+- [step-security/changeset-action/select-mode](./select-mode/README.md): Select the mode to run a Changesets workflow.
+- [step-security/changeset-action/version](./version/README.md): Version packages and create or update a pull request with the changes.
+- [step-security/changeset-action/pack](./pack/README.md): Pack publishable packages into tarballs.
+- [step-security/changeset-action/publish](./publish/README.md): Publish packages to npm.
+- [step-security/changeset-action/pr-status](./pr-status/README.md): Generate changeset status in PRs.
+- [step-security/changeset-action/pr-comment](./pr-comment/README.md): Create or update comments on PRs.
 
-## changesets/action
+## step-security/changeset-action
 
-This action handles versioning and publishing of packages. It's the equivalent of setting up the `changesets/action/select-mode`, `changesets/action/version`, and `changesets/action/publish` actions in a workflow, but with the required permissions combined.
+This action handles versioning and publishing of packages. It's the equivalent of setting up the `step-security/changeset-action/select-mode`, `step-security/changeset-action/version`, and `step-security/changeset-action/publish` actions in a workflow, but with the required permissions combined.
 
 If using [trusted publishing](https://docs.npmjs.com/trusted-publishers), it's recommended to set up the individual sub-actions instead to tighten publish permissions.
 
