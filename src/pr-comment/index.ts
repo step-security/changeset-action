@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { getOptionalInput, getRequiredInput } from "../utils.ts";
+import { validateSubscription } from "../subscription.ts";
 
 type Octokit = ReturnType<typeof github.getOctokit>;
 type CreateCommentParams = NonNullable<
@@ -17,6 +18,7 @@ try {
 }
 
 async function main() {
+  await validateSubscription();
   const context = github.context.payload.pull_request;
   if (!context) {
     throw new Error(
