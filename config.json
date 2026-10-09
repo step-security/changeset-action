@@ -1,0 +1,17 @@
+{
+  "$comment": "Managed automatically when syncing with upstream. Do not edit by hand.",
+  "schema_version": 1,
+  "onboarding_type": "copied",
+  "action_type": "node",
+  "upstream": {
+    "repository": "changesets/action",
+    "synced_tag": "v2.1.2",
+    "synced_commit": "ae32849d5ba541f9ae29e40e22a623bc13562f51",
+    "archived": false
+  },
+  "build": {
+    "package_manager": "yarn@1.22.22",
+    "node_version": "24",
+    "script": "build"
+  }
+}

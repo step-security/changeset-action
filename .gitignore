@@ -2,3 +2,9 @@ node_modules
 .parcel-cache
 .cache
 *.log
+<<<<<<< 62c50a7124a58b925a572769ff14a6acd66bafd1
+=======
+.env
+
+dist/
+>>>>>>> 6062632720f5cc37f6dd36a095e8120c7682ca71
