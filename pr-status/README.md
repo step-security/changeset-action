@@ -1,6 +1,6 @@
 [![StepSecurity Maintained Action](https://raw.githubusercontent.com/step-security/maintained-actions-assets/main/assets/maintained-action-banner.png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
 
-# changesets/action/pr-status
+# step-security/changeset-action/pr-status
 
 This action generates the changesets status in PRs, for example, whether it has changeset files and which packages will be released if the PR is merged.
 

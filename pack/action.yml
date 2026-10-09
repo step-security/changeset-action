@@ -1,4 +1,5 @@
 name: Changesets - Pack
+author: step-security
 description: Pack publishable packages into tarballs
 runs:
   using: node24

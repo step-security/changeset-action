@@ -1,4 +1,5 @@
 name: Changesets - Publish
+author: step-security
 description: Publish packages to npm
 runs:
   using: node24

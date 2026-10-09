@@ -1,10 +1,10 @@
 [![StepSecurity Maintained Action](https://raw.githubusercontent.com/step-security/maintained-actions-assets/main/assets/maintained-action-banner.png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
 
-# changesets/action/pr-comment
+# step-security/changeset-action/pr-comment
 
-This action creates or updates comments on PRs, aimed to complement [changesets/action/pr-status](../pr-status/README.md).
+This action creates or updates comments on PRs, aimed to complement [step-security/changeset-action/pr-status](../pr-status/README.md).
 
-Its features are kept intentionally simple. For advanced usecases, check out other actions such as [mshick/add-pr-comment](https://github.com/marketplace/actions/add-pr-comment) and [peter-evans/create-or-update-comment](https://github.com/marketplace/actions/create-or-update-comment).
+Its features are kept intentionally simple. For advanced usecases, check out other actions such as [step-security/add-pr-comment](https://github.com/step-security/add-pr-comment) and [step-security/create-or-update-comment](https://github.com/step-security/create-or-update-comment).
 
 ## Requirements
 
@@ -32,10 +32,10 @@ jobs:
   pr-comment:
     runs-on: ubuntu-slim
     permissions:
-      pull-requests: write # to create and update comments on PRs (changesets/action/pr-comment)
+      pull-requests: write # to create and update comments on PRs (step-security/changeset-action/pr-comment)
     steps:
       - name: Comment on PR
-        uses: changesets/action/pr-comment@v2
+        uses: step-security/changeset-action/pr-comment@v2
         with:
           body: Hello world!
 ```
@@ -50,7 +50,7 @@ jobs:
     # ...
     steps:
       - name: Comment on PR
-        uses: changesets/action/pr-comment@v2
+        uses: step-security/changeset-action/pr-comment@v2
         with:
           body: Hello world!
           update-id: my-tag
@@ -63,7 +63,7 @@ jobs:
   pr-comment:
     # ...
     steps:
-      - uses: changesets/action/pr-comment@v2
+      - uses: step-security/changeset-action/pr-comment@v2
         with:
           body: Hello world!
           update-id: ""
