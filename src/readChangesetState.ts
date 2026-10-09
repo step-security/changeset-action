@@ -1,5 +1,5 @@
 import { readPreState } from "@changesets/pre";
-import readChangesets from "@changesets/read";
+import { readChangesets } from "@changesets/read";
 import type { PreState, NewChangeset } from "@changesets/types";
 
 export type ChangesetState = {
@@ -14,11 +14,11 @@ export default async function readChangesetState(
   let changesets = await readChangesets(cwd);
 
   if (preState !== undefined && preState.mode === "pre") {
-    let changesetsToFilter = new Set(preState.changesets);
-
     return {
       preState,
-      changesets: changesets.filter((x) => !changesetsToFilter.has(x.id)),
+      changesets: changesets.filter(
+        (changeset) => !changeset.id.startsWith("pre/"),
+      ),
     };
   }
 

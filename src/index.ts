@@ -1,3 +1,4 @@
+<<<<<<< 62c50a7124a58b925a572769ff14a6acd66bafd1
 import * as fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -5,12 +6,27 @@ import * as core from "@actions/core";
 import axios, { isAxiosError } from "axios";
 import { Git } from "./git.ts";
 import { setupOctokit } from "./octokit.ts";
+=======
+import * as core from "@actions/core";
+import { GitHub } from "./github.ts";
+>>>>>>> 6062632720f5cc37f6dd36a095e8120c7682ca71
 import readChangesetState from "./readChangesetState.ts";
 import { runPublish, runVersion } from "./run.ts";
-import { fileExists } from "./utils.ts";
+import {
+  getOptionalInput,
+  getRequiredInput,
+  throwOnRemovedCommitModeInput,
+  throwOnRenamedInputs,
+  validateChangesetsCliVersion,
+} from "./utils.ts";
 
-const getOptionalInput = (name: string) => core.getInput(name) || undefined;
+try {
+  await main();
+} catch (err) {
+  core.setFailed((err as Error).message);
+}
 
+<<<<<<< 62c50a7124a58b925a572769ff14a6acd66bafd1
 async function validateSubscription(): Promise<void> {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   let repoPrivate: boolean | undefined;
@@ -63,47 +79,47 @@ async function validateSubscription(): Promise<void> {
   // to maintain compatibility with workflows created before github-token input was introduced
   // it's important to prefer the explicitly set GITHUB_TOKEN over the default token coming from github.token
   let githubToken = process.env.GITHUB_TOKEN || core.getInput("github-token");
+=======
+async function main() {
+  const cwd = getOptionalInput("cwd") || process.cwd();
+  await validateChangesetsCliVersion(cwd);
+>>>>>>> 6062632720f5cc37f6dd36a095e8120c7682ca71
 
-  if (!githubToken) {
-    core.setFailed("Please add the GITHUB_TOKEN to the changesets action");
-    return;
-  }
-
-  const cwd = path.resolve(getOptionalInput("cwd") ?? "");
-  core.info(`using resolved cwd: ${cwd}`);
-
-  const octokit = setupOctokit(githubToken);
-  const commitMode = getOptionalInput("commitMode") ?? "git-cli";
-  const prDraft = getOptionalInput("prDraft");
-  if (commitMode !== "git-cli" && commitMode !== "github-api") {
-    core.setFailed(`Invalid commit mode: ${commitMode}`);
-    return;
-  }
-  if (prDraft !== undefined && prDraft !== "always" && prDraft !== "create") {
-    core.setFailed(`Invalid prDraft: ${prDraft}`);
-    return;
-  }
-  const git = new Git({
-    octokit: commitMode === "github-api" ? octokit : undefined,
-    cwd,
+  throwOnRenamedInputs({
+    publish: "publish-script",
+    version: "version-script",
+    commit: "commit-message",
+    title: "pr-title",
+    branch: "pr-base-branch",
+    prDraft: "pr-draft",
+    createGithubReleases: "create-github-releases",
   });
+  throwOnRemovedCommitModeInput();
 
-  let setupGitUser = core.getBooleanInput("setupGitUser");
-
-  if (setupGitUser) {
-    core.info("setting git user");
-    await git.setupUser();
+  const githubToken = getRequiredInput("github-token");
+  if (process.env.GITHUB_TOKEN && process.env.GITHUB_TOKEN !== githubToken) {
+    throw new Error(
+      'The GITHUB_TOKEN environment variable is set and does not match the "github-token" input. ' +
+        'Please pass the custom GitHub token to the "github-token" input and ' +
+        "remove the GITHUB_TOKEN environment variable to avoid conflicts.",
+    );
   }
 
-  core.info("setting GitHub credentials");
-  await fs.writeFile(
-    `${process.env.HOME}/.netrc`,
-    `machine github.com\nlogin github-actions[bot]\npassword ${githubToken}`,
-  );
+  const pushWithGitCli = core.getBooleanInput("push-with-git-cli");
+  const prDraft = getOptionalInput("pr-draft");
+  if (prDraft !== undefined && prDraft !== "always" && prDraft !== "create") {
+    core.setFailed(`Invalid pr-draft: ${prDraft}`);
+    return;
+  }
+  const github = new GitHub({
+    cwd,
+    githubToken,
+    pushWithGitCli,
+  });
 
   let { changesets } = await readChangesetState(cwd);
 
-  let publishScript = core.getInput("publish");
+  let publishScript = core.getInput("publish-script");
   let hasChangesets = changesets.length !== 0;
   const hasNonEmptyChangesets = changesets.some(
     (changeset) => changeset.releases.length > 0,
@@ -111,13 +127,13 @@ async function validateSubscription(): Promise<void> {
   let hasPublishScript = !!publishScript;
 
   core.setOutput("published", "false");
-  core.setOutput("publishedPackages", "[]");
-  core.setOutput("hasChangesets", String(hasChangesets));
+  core.setOutput("published-packages", "[]");
+  core.setOutput("has-changesets", String(hasChangesets));
 
   switch (true) {
     case !hasChangesets && !hasPublishScript:
       core.info(
-        "No changesets present or were removed by merging release PR. Not publishing because no publish script found.",
+        "No changesets present or were removed by merging version PR. Not publishing because publish-script is not set.",
       );
       return;
     case !hasChangesets && hasPublishScript: {
@@ -125,70 +141,35 @@ async function validateSubscription(): Promise<void> {
         "No changesets found. Attempting to publish any unpublished packages to npm",
       );
 
-      if (process.env.NPM_TOKEN) {
-        const userNpmrcPath = `${process.env.HOME}/.npmrc`;
-
-        if (await fileExists(userNpmrcPath)) {
-          core.info("Found existing user .npmrc file");
-          const userNpmrcContent = await fs.readFile(userNpmrcPath, "utf8");
-          const authLine = userNpmrcContent.split("\n").find((line) => {
-            // check based on https://github.com/npm/cli/blob/8f8f71e4dd5ee66b3b17888faad5a7bf6c657eed/test/lib/adduser.js#L103-L105
-            return /^\s*\/\/registry\.npmjs\.org\/:[_-]authToken=/i.test(line);
-          });
-          if (authLine) {
-            core.info(
-              "Found existing auth token for the npm registry in the user .npmrc file",
-            );
-          } else {
-            core.info(
-              "Didn't find existing auth token for the npm registry in the user .npmrc file, creating one",
-            );
-            await fs.appendFile(
-              userNpmrcPath,
-              `\n//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}\n`,
-            );
-          }
-        } else {
-          core.info(
-            "No user .npmrc file found, creating one with NPM_TOKEN used as auth token",
-          );
-          await fs.writeFile(
-            userNpmrcPath,
-            `//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}\n`,
-          );
-        }
-      } else if (
-        process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN &&
-        process.env.ACTIONS_ID_TOKEN_REQUEST_URL
-      ) {
-        core.info(
-          "No NPM_TOKEN found, but OIDC is available - using npm trusted publishing",
-        );
-      } else {
-        core.info(
-          "No NPM_TOKEN or OIDC available - assuming npm is already authenticated",
+      const createGithubReleases = core.getBooleanInput(
+        "create-github-releases",
+      );
+      const pushGitTags = core.getBooleanInput("push-git-tags");
+      if (createGithubReleases && !pushGitTags) {
+        throw new Error(
+          "The input 'create-github-releases' is set to true, but 'push-git-tags' is set to false. " +
+            "Creating GitHub releases requires pushing git tags. Please set 'push-git-tags' to true " +
+            "or set 'create-github-releases' to false.",
         );
       }
-
       const result = await runPublish({
         script: publishScript,
-        githubToken,
-        git,
-        octokit,
-        createGithubReleases: core.getBooleanInput("createGithubReleases"),
+        github,
+        createGithubReleases,
+        pushGitTags,
         cwd,
       });
 
       if (result.published) {
         core.setOutput("published", "true");
         core.setOutput(
-          "publishedPackages",
+          "published-packages",
           JSON.stringify(result.publishedPackages),
         );
       }
 
       if (result.exitCode !== 0) {
-        core.error(
+        throw new Error(
           `Publish command exited with code ${result.exitCode}${
             result.published
               ? `, but some packages were published: ${result.publishedPackages
@@ -197,34 +178,27 @@ async function validateSubscription(): Promise<void> {
               : ""
           }`,
         );
-        process.exit(result.exitCode);
       }
       return;
     }
     case hasChangesets && !hasNonEmptyChangesets:
-      core.info("All changesets are empty; not creating PR");
+      core.info("All changesets are empty. Not creating PR");
       return;
     case hasChangesets: {
-      const octokit = setupOctokit(githubToken);
       const { pullRequestNumber } = await runVersion({
-        script: getOptionalInput("version"),
-        githubToken,
-        git,
-        octokit,
+        script: getOptionalInput("version-script"),
+        github,
         cwd,
-        prTitle: getOptionalInput("title"),
-        commitMessage: getOptionalInput("commit"),
+        prTitle: getOptionalInput("pr-title"),
+        commitMessage: getOptionalInput("commit-message"),
         hasPublishScript,
         prDraft,
-        branch: getOptionalInput("branch"),
+        branch: getOptionalInput("pr-base-branch"),
       });
 
-      core.setOutput("pullRequestNumber", String(pullRequestNumber));
+      core.setOutput("pr-number", String(pullRequestNumber));
 
       return;
     }
   }
-})().catch((err) => {
-  core.error(err);
-  core.setFailed(err.message);
-});
+}

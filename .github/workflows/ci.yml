@@ -7,6 +7,9 @@ on:
   merge_group:
     branches:
       - main
+      - next
+      # merge group rulesets don't allow wildcards so in settings each maintenance branch needs to be added separately
+      - "maintenance/v*" # branch rulesets don't support v[0-9]+
 
 permissions:
   contents: read
@@ -18,9 +21,8 @@ concurrency:
 jobs:
   test:
     name: Test
-    timeout-minutes: 20
     runs-on: ubuntu-latest
-
+    timeout-minutes: 20
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -39,9 +41,8 @@ jobs:
 
   typecheck:
     name: Typecheck
-    timeout-minutes: 20
     runs-on: ubuntu-latest
-
+    timeout-minutes: 20
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -60,9 +61,8 @@ jobs:
 
   lint:
     name: Lint
-    timeout-minutes: 20
     runs-on: ubuntu-latest
-
+    timeout-minutes: 20
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
