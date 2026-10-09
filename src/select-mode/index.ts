@@ -4,12 +4,12 @@ import path from "node:path";
 import artifact from "@actions/artifact";
 import * as core from "@actions/core";
 import readChangesetState from "../readChangesetState.ts";
+import { validateSubscription } from "../subscription.ts";
 import {
   execChangesetsCli,
   getOptionalInput,
   validateChangesetsCliVersion,
 } from "../utils.ts";
-import { validateSubscription } from "../subscription.ts";
 
 type ModeResult =
   | {

@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import { GitHub } from "./github.ts";
 import readChangesetState from "./readChangesetState.ts";
 import { runPublish, runVersion } from "./run.ts";
+import { validateSubscription } from "./subscription.ts";
 import {
   getOptionalInput,
   getRequiredInput,
@@ -9,7 +10,6 @@ import {
   throwOnRenamedInputs,
   validateChangesetsCliVersion,
 } from "./utils.ts";
-import { validateSubscription } from "./subscription.ts";
 
 try {
   await main();

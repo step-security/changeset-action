@@ -10,7 +10,7 @@
     "archived": false
   },
   "build": {
-    "package_manager": "yarn@1.22.22",
+    "package_manager": "pnpm@11.20.0",
     "node_version": "24",
     "script": "build"
   }

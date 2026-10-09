@@ -29,7 +29,7 @@ jobs:
       - uses: ./.github/actions/ci-setup
 
       - name: Test
-        run: yarn test
+        run: pnpm test
 
   typecheck:
     name: Typecheck
@@ -49,7 +49,7 @@ jobs:
       - uses: ./.github/actions/ci-setup
 
       - name: Typecheck
-        run: yarn typecheck
+        run: pnpm typecheck
 
   lint:
     name: Lint
@@ -69,7 +69,7 @@ jobs:
       - uses: ./.github/actions/ci-setup
 
       - name: Format
-        run: yarn format
+        run: pnpm format
 
   ci-ok:
     name: CI OK

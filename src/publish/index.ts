@@ -3,13 +3,13 @@ import os from "node:os";
 import * as core from "@actions/core";
 import { GitHub } from "../github.ts";
 import { runPublish } from "../run.ts";
+import { validateSubscription } from "../subscription.ts";
 import {
   downloadArtifact,
   getOptionalInput,
   getRequiredInput,
   validateChangesetsCliVersion,
 } from "../utils.ts";
-import { validateSubscription } from "../subscription.ts";
 
 try {
   await main();
