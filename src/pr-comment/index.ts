@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { getOptionalInput, getRequiredInput } from "../utils.ts";
 import { validateSubscription } from "../subscription.ts";
+import { getOptionalInput, getRequiredInput } from "../utils.ts";
 
 type Octokit = ReturnType<typeof github.getOctokit>;
 type CreateCommentParams = NonNullable<

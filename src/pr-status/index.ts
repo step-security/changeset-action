@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { getCommentMessage } from "./message.ts";
 import { validateSubscription } from "../subscription.ts";
+import { getCommentMessage } from "./message.ts";
 
 try {
   await main();
