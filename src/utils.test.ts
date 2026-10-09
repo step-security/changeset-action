@@ -1,5 +1,12 @@
-import { expect, test } from "vitest";
-import { BumpLevels, getChangelogEntry, sortTheThings } from "./utils.ts";
+import { createFixture } from "fs-fixture";
+import { afterEach, expect, test, vi } from "vitest";
+import {
+  BumpLevels,
+  getChangelogEntry,
+  sortTheThings,
+  throwOnRemovedCommitModeInput,
+  validateChangesetsCliVersion,
+} from "./utils.ts";
 
 let changelog = `# @keystone-alpha/email
 
@@ -68,6 +75,10 @@ let changelog = `# @keystone-alpha/email
   - Update mjml-dependency
 `;
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 test("it works", () => {
   let entry = getChangelogEntry(changelog, "3.0.0");
   expect(entry.content).toMatchSnapshot();
@@ -99,4 +110,63 @@ test("it sorts the things right", () => {
     },
   ];
   expect(things.sort(sortTheThings)).toMatchSnapshot();
+});
+
+test.each([
+  ["commit-mode", "git-cli", "push-with-git-cli: true"],
+  ["commit-mode", "github-api", "push-with-git-cli: false"],
+  ["commitMode", "git-cli", "push-with-git-cli: true"],
+  ["commitMode", "github-api", "push-with-git-cli: false"],
+])(
+  "explains how to migrate the removed %s input from %s",
+  (inputName, value, replacement) => {
+    vi.stubEnv(`INPUT_${inputName.toUpperCase()}`, value);
+    expect(() => throwOnRemovedCommitModeInput()).toThrow(replacement);
+  },
+);
+
+test("throws when the project declares Changesets CLI v2", async () => {
+  await using fixture = await createFixture({
+    "package.json": JSON.stringify({
+      name: "project",
+      devDependencies: { "@changesets/cli": "^2.29.7" },
+    }),
+    "package-lock.json": "",
+  });
+
+  await expect(validateChangesetsCliVersion(fixture.path)).rejects.toThrow(
+    "This version of the Changesets action is designed to work with Changesets CLI v3. Changesets CLI v2 is not supported; use Changesets action v1 instead, which is compatible with CLI v2.",
+  );
+});
+
+test("accepts a Changesets CLI v3 contract without an installed CLI", async () => {
+  await using fixture = await createFixture({
+    "package.json": JSON.stringify({
+      name: "project",
+      devDependencies: { "@changesets/cli": "^3.0.0" },
+    }),
+    "package-lock.json": "",
+  });
+
+  await expect(
+    validateChangesetsCliVersion(fixture.path),
+  ).resolves.toBeUndefined();
+});
+
+test("throws when the project has Changesets CLI v2 installed", async () => {
+  await using fixture = await createFixture({
+    "package.json": JSON.stringify({
+      name: "project",
+      devDependencies: { "@changesets/cli": "^3.0.0" },
+    }),
+    "package-lock.json": "",
+    "node_modules/@changesets/cli/package.json": JSON.stringify({
+      name: "@changesets/cli",
+      version: "2.29.7",
+    }),
+  });
+
+  await expect(validateChangesetsCliVersion(fixture.path)).rejects.toThrow(
+    "This version of the Changesets action is designed to work with Changesets CLI v3. Changesets CLI v2 is not supported; use Changesets action v1 instead, which is compatible with CLI v2.",
+  );
 });

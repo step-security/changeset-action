@@ -1,11 +1,13 @@
 import path from "node:path";
+import * as core from "@actions/core";
+import * as github from "@actions/github";
 import type { Changeset } from "@changesets/types";
-import writeChangeset from "@changesets/write";
-import { createFixture } from "fs-fixture";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Git } from "./git.ts";
-import { setupOctokit } from "./octokit.ts";
-import { runVersion } from "./run.ts";
+import { writeChangeset } from "@changesets/write";
+import { exec } from "tinyexec";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GitHub } from "./github.ts";
+import { runPublish, runVersion } from "./run.ts";
+import { gitdir } from "./test-utils.ts";
 
 vi.mock("@actions/github", () => ({
   context: {
@@ -21,8 +23,13 @@ vi.mock("@actions/github", () => ({
     graphql: mockedGraphql,
   }),
 }));
-vi.mock("./git.ts");
-vi.mock("@changesets/ghcommit/git");
+vi.mock("@actions/core", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@actions/core")>()),
+  error: vi.fn(),
+  notice: vi.fn(),
+  warning: vi.fn(),
+}));
+vi.mock("@changesets/ghcommit");
 
 let mockedGithubMethods = {
   pulls: {
@@ -38,7 +45,7 @@ let mockedGraphql = vi.fn();
 const nodeModulesDir = path.join(import.meta.dirname, "..", "node_modules");
 
 function createSimpleProjectFixture() {
-  return createFixture({
+  return gitdir({
     node_modules: (api) => api.symlink(nodeModulesDir),
     ".changeset/config.json": JSON.stringify({}),
     "packages/pkg-a/package.json": JSON.stringify({
@@ -58,11 +65,12 @@ function createSimpleProjectFixture() {
       private: true,
       workspaces: ["packages/*"],
     }),
+    "package-lock.json": "",
   });
 }
 
 function createIgnoredPackageFixture() {
-  return createFixture({
+  return gitdir({
     node_modules: (api) => api.symlink(nodeModulesDir),
     ".changeset/config.json": JSON.stringify({
       ignore: ["changesets-dev-ignored-package-pkg-a"],
@@ -84,6 +92,7 @@ function createIgnoredPackageFixture() {
       private: true,
       workspaces: ["packages/*"],
     }),
+    "package-lock.json": "",
   });
 }
 
@@ -91,14 +100,89 @@ const writeChangesets = (changesets: Changeset[], cwd: string) => {
   return Promise.all(changesets.map((commit) => writeChangeset(commit, cwd)));
 };
 
+const createGithub = (cwd: string) =>
+  new GitHub({
+    cwd,
+    githubToken: "@@GITHUB_TOKEN",
+    pushWithGitCli: false,
+  });
+
+async function updateGithubContext(cwd: string) {
+  const head = await exec("git", ["rev-parse", "HEAD"], {
+    nodeOptions: { cwd },
+  });
+  github.context.sha = head.stdout.trim();
+}
+
+function resetGithubContext() {
+  github.context.sha = "xeac7";
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  resetGithubContext();
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe("publish", () => {
+  it("warns when a custom publish script does not create the output file", async () => {
+    await using fixture = await createSimpleProjectFixture();
+    const cwd = fixture.path;
+    await updateGithubContext(cwd);
+    vi.stubEnv("RUNNER_TEMP", cwd);
+
+    const result = await runPublish({
+      script: 'node -e "void 0"',
+      github: createGithub(cwd),
+      createGithubReleases: true,
+      pushGitTags: true,
+      cwd,
+    });
+
+    expect(result).toEqual({ published: false, exitCode: 0 });
+    expect(core.warning).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "GitHub releases and git tags cannot be created without this output",
+      ),
+    );
+  });
+
+  it("throws when the built-in publish command does not create the output file", async () => {
+    await using fixture = await gitdir({
+      "node_modules/@changesets/cli/package.json": JSON.stringify({
+        name: "@changesets/cli",
+        type: "module",
+      }),
+      "node_modules/@changesets/cli/bin.js": "",
+      "package.json": JSON.stringify({
+        name: "simple-project",
+        version: "1.0.0",
+      }),
+      "package-lock.json": "",
+    });
+    const cwd = fixture.path;
+    await updateGithubContext(cwd);
+    vi.stubEnv("RUNNER_TEMP", cwd);
+
+    await expect(
+      runPublish({
+        github: createGithub(cwd),
+        createGithubReleases: true,
+        pushGitTags: true,
+        cwd,
+      }),
+    ).rejects.toThrow("Failed to read changesets output at");
+  });
 });
 
 describe("version", () => {
   it("creates simple PR", async () => {
     await using fixture = await createSimpleProjectFixture();
     const cwd = fixture.path;
+    await updateGithubContext(cwd);
 
     mockedGithubMethods.pulls.list.mockImplementationOnce(() => ({ data: [] }));
 
@@ -126,9 +210,7 @@ describe("version", () => {
     );
 
     await runVersion({
-      octokit: setupOctokit("@@GITHUB_TOKEN"),
-      githubToken: "@@GITHUB_TOKEN",
-      git: new Git({ cwd }),
+      github: createGithub(cwd),
       cwd,
     });
 
@@ -138,6 +220,7 @@ describe("version", () => {
   it('creates a draft PR when prDraft is "create"', async () => {
     await using fixture = await createSimpleProjectFixture();
     const cwd = fixture.path;
+    await updateGithubContext(cwd);
 
     mockedGithubMethods.pulls.list.mockImplementationOnce(() => ({ data: [] }));
 
@@ -161,9 +244,7 @@ describe("version", () => {
     );
 
     await runVersion({
-      octokit: setupOctokit("@@GITHUB_TOKEN"),
-      githubToken: "@@GITHUB_TOKEN",
-      git: new Git({ cwd }),
+      github: createGithub(cwd),
       cwd,
       prDraft: "create",
     });
@@ -174,6 +255,7 @@ describe("version", () => {
   it("only includes bumped packages in the PR body", async () => {
     await using fixture = await createSimpleProjectFixture();
     const cwd = fixture.path;
+    await updateGithubContext(cwd);
 
     mockedGithubMethods.pulls.list.mockImplementationOnce(() => ({ data: [] }));
 
@@ -197,9 +279,7 @@ describe("version", () => {
     );
 
     await runVersion({
-      octokit: setupOctokit("@@GITHUB_TOKEN"),
-      githubToken: "@@GITHUB_TOKEN",
-      git: new Git({ cwd }),
+      github: createGithub(cwd),
       cwd,
     });
 
@@ -209,6 +289,7 @@ describe("version", () => {
   it("doesn't include ignored package that got a dependency update in the PR body", async () => {
     await using fixture = await createIgnoredPackageFixture();
     const cwd = fixture.path;
+    await updateGithubContext(cwd);
 
     mockedGithubMethods.pulls.list.mockImplementationOnce(() => ({ data: [] }));
 
@@ -232,9 +313,7 @@ describe("version", () => {
     );
 
     await runVersion({
-      octokit: setupOctokit("@@GITHUB_TOKEN"),
-      githubToken: "@@GITHUB_TOKEN",
-      git: new Git({ cwd }),
+      github: createGithub(cwd),
       cwd,
     });
 
@@ -244,6 +323,7 @@ describe("version", () => {
   it("does not include changelog entries if full message exceeds size limit", async () => {
     await using fixture = await createSimpleProjectFixture();
     const cwd = fixture.path;
+    await updateGithubContext(cwd);
 
     mockedGithubMethods.pulls.list.mockImplementationOnce(() => ({ data: [] }));
 
@@ -287,9 +367,7 @@ fluminis divesque vulnere aquis parce lapsis rabie si visa fulmineis.
     );
 
     await runVersion({
-      octokit: setupOctokit("@@GITHUB_TOKEN"),
-      githubToken: "@@GITHUB_TOKEN",
-      git: new Git({ cwd }),
+      github: createGithub(cwd),
       cwd,
       prBodyMaxCharacters: 1000,
     });
@@ -303,6 +381,7 @@ fluminis divesque vulnere aquis parce lapsis rabie si visa fulmineis.
   it("does not include any release information if a message with simplified release info exceeds size limit", async () => {
     await using fixture = await createSimpleProjectFixture();
     const cwd = fixture.path;
+    await updateGithubContext(cwd);
 
     mockedGithubMethods.pulls.list.mockImplementationOnce(() => ({ data: [] }));
 
@@ -346,9 +425,7 @@ fluminis divesque vulnere aquis parce lapsis rabie si visa fulmineis.
     );
 
     await runVersion({
-      octokit: setupOctokit("@@GITHUB_TOKEN"),
-      githubToken: "@@GITHUB_TOKEN",
-      git: new Git({ cwd }),
+      github: createGithub(cwd),
       cwd,
       prBodyMaxCharacters: 500,
     });
@@ -362,6 +439,7 @@ fluminis divesque vulnere aquis parce lapsis rabie si visa fulmineis.
   it('updates an existing PR via GraphQL without converting it to draft when prDraft is "create"', async () => {
     await using fixture = await createSimpleProjectFixture();
     const cwd = fixture.path;
+    await updateGithubContext(cwd);
 
     mockedGithubMethods.pulls.list.mockImplementationOnce(() => ({
       data: [{ number: 123, node_id: "PR_kwDOA" }],
@@ -383,9 +461,7 @@ fluminis divesque vulnere aquis parce lapsis rabie si visa fulmineis.
     );
 
     await runVersion({
-      octokit: setupOctokit("@@GITHUB_TOKEN"),
-      githubToken: "@@GITHUB_TOKEN",
-      git: new Git({ cwd }),
+      github: createGithub(cwd),
       cwd,
       prDraft: "create",
     });
@@ -396,6 +472,7 @@ fluminis divesque vulnere aquis parce lapsis rabie si visa fulmineis.
   it('updates an existing PR via GraphQL and converts it to draft when prDraft is "always"', async () => {
     await using fixture = await createSimpleProjectFixture();
     const cwd = fixture.path;
+    await updateGithubContext(cwd);
 
     mockedGithubMethods.pulls.list.mockImplementationOnce(() => ({
       data: [{ number: 123, node_id: "PR_kwDOA" }],
@@ -417,9 +494,7 @@ fluminis divesque vulnere aquis parce lapsis rabie si visa fulmineis.
     );
 
     await runVersion({
-      octokit: setupOctokit("@@GITHUB_TOKEN"),
-      githubToken: "@@GITHUB_TOKEN",
-      git: new Git({ cwd }),
+      github: createGithub(cwd),
       cwd,
       prDraft: "always",
     });

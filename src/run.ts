@@ -1,24 +1,29 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
-import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import * as core from "@actions/core";
-import { exec, getExecOutput } from "@actions/exec";
-import * as github from "@actions/github";
+import {
+  exec,
+  getExecOutput,
+  type ExecOptions,
+  type ExecOutput,
+} from "@actions/exec";
+import { context } from "@actions/github";
 import type { PreState } from "@changesets/types";
 import { type Package, getPackages } from "@manypkg/get-packages";
-import semverLt from "semver/functions/lt.js";
-import { Git } from "./git.ts";
+import type { GitHub } from "./github.ts";
 import type { Octokit } from "./octokit.ts";
 import readChangesetState from "./readChangesetState.ts";
 import {
+  execChangesetsCli,
   getChangedPackages,
   getChangelogEntry,
+  getExecOutputChangesetsCli,
   getVersionsByDirectory,
   isErrorWithCode,
   sortTheThings,
 } from "./utils.ts";
-
-const require = createRequire(import.meta.url);
 
 // GitHub Issues/PRs messages have a max size limit on the
 // message body payload.
@@ -54,20 +59,27 @@ const createRelease = async (
     tag_name: tagName,
     body: changelogEntry.content,
     prerelease: pkg.packageJson.version.includes("-"),
-    ...github.context.repo,
+    ...context.repo,
   });
 };
 
 type PublishOptions = {
-  script: string;
-  githubToken: string;
-  octokit: Octokit;
+  script?: string;
+  fromPackDir?: string;
   createGithubReleases: boolean;
-  git: Git;
+  pushGitTags: boolean;
+  github: GitHub;
   cwd: string;
 };
 
 type PublishedPackage = { name: string; version: string };
+type ChangesetsOutputEvent = {
+  type: "git-tag";
+  tag: string;
+  packageName: string;
+};
+
+class ChangesetsOutputReadError extends Error {}
 
 type PublishResult =
   | {
@@ -80,81 +92,163 @@ type PublishResult =
       exitCode: number;
     };
 
+function isObject(value: unknown) {
+  return typeof value === "object" && value !== null;
+}
+
+function isChangesetsOutputEvent(
+  value: unknown,
+): value is ChangesetsOutputEvent {
+  return (
+    isObject(value) &&
+    "type" in value &&
+    value.type === "git-tag" &&
+    "tag" in value &&
+    typeof value.tag === "string" &&
+    "packageName" in value &&
+    typeof value.packageName === "string"
+  );
+}
+
+async function readChangesetsOutput(outputPath: string) {
+  let rawOutput: string;
+  try {
+    rawOutput = await fs.readFile(outputPath, "utf8");
+  } catch (err) {
+    throw new ChangesetsOutputReadError(
+      `Failed to read changesets output at ${outputPath}`,
+      { cause: err },
+    );
+  }
+
+  const events: ChangesetsOutputEvent[] = [];
+
+  let lineStart = 0;
+  while (lineStart <= rawOutput.length) {
+    let lineEnd = rawOutput.indexOf("\n", lineStart);
+    if (lineEnd === -1) {
+      lineEnd = rawOutput.length;
+    }
+    const line = rawOutput.slice(lineStart, lineEnd);
+    lineStart = lineEnd + 1;
+
+    if (/^\s*$/.test(line)) {
+      continue;
+    }
+
+    let event: unknown;
+    try {
+      event = JSON.parse(line);
+    } catch (err) {
+      throw new Error(`Failed to parse changesets output event: ${line}`, {
+        cause: err,
+      });
+    }
+
+    if (!isChangesetsOutputEvent(event)) {
+      continue;
+    }
+
+    events.push(event);
+  }
+
+  return events;
+}
+
 export async function runPublish({
   script,
-  githubToken,
-  git,
-  octokit,
+  fromPackDir,
+  github,
   createGithubReleases,
+  pushGitTags,
   cwd,
 }: PublishOptions): Promise<PublishResult> {
-  let changesetPublishOutput = await getExecOutput(script, undefined, {
+  const { octokit } = github;
+  // Changesets creates annotated tags locally, including when the action pushes those tags through the GitHub API.
+  // It might also be important for custom publish scripts to have a valid git user configured.
+  await github.ensureGitUser();
+
+  let changesetPublishOutput: ExecOutput;
+  const outputFile = path.join(
+    process.env.RUNNER_TEMP ?? (await fs.realpath(os.tmpdir())),
+    `changesets-output-${randomUUID()}.ndjson`,
+  );
+  const execOptions: ExecOptions = {
     cwd,
     ignoreReturnCode: true,
-    env: { ...process.env, GITHUB_TOKEN: githubToken },
-  });
+    env: {
+      ...process.env,
+      GITHUB_TOKEN: github.getToken(),
+      CHANGESETS_OUTPUT: outputFile,
+    },
+  };
+
+  if (script) {
+    changesetPublishOutput = await getExecOutput(
+      script,
+      undefined,
+      execOptions,
+    );
+  } else {
+    const args = ["publish"];
+    if (fromPackDir) {
+      args.push("--from-pack-dir", fromPackDir);
+    }
+    changesetPublishOutput = await getExecOutputChangesetsCli(
+      args,
+      execOptions,
+    );
+  }
 
   let { packages, tool } = await getPackages(cwd);
-  let releasedPackages: Package[] = [];
-
-  if (tool !== "root") {
-    let newTagRegex = /New tag:\s+(@[^/]+\/[^@]+|[^/]+)@([^\s]+)/;
-    let packagesByName = new Map(packages.map((x) => [x.packageJson.name, x]));
-
-    for (let line of changesetPublishOutput.stdout.split("\n")) {
-      let match = line.match(newTagRegex);
-      if (match === null) {
-        continue;
-      }
-      let pkgName = match[1];
-      let pkg = packagesByName.get(pkgName);
-      if (pkg === undefined) {
-        throw new Error(
-          `Package "${pkgName}" not found.` +
-            "This is probably a bug in the action, please open an issue",
-        );
-      }
-      releasedPackages.push(pkg);
+  let packagesByName = new Map(packages.map((x) => [x.packageJson.name, x]));
+  let output: ChangesetsOutputEvent[];
+  try {
+    output = await readChangesetsOutput(outputFile);
+  } catch (err) {
+    if (!script || !(err instanceof ChangesetsOutputReadError)) {
+      throw err;
     }
-
-    if (createGithubReleases) {
-      await Promise.all(
-        releasedPackages.map(async (pkg) => {
-          const tagName = `${pkg.packageJson.name}@${pkg.packageJson.version}`;
-          await git.pushTag(tagName);
-          await createRelease(octokit, { pkg, tagName });
-        }),
-      );
-    }
-  } else {
-    if (packages.length === 0) {
+    core.warning(
+      `${err.message}. GitHub releases and git tags cannot be created without this output. Ensure the custom publish script passes CHANGESETS_OUTPUT to the Changesets CLI.`,
+    );
+    output = [];
+  }
+  let releases = output.map((event) => {
+    let pkg = packagesByName.get(event.packageName);
+    if (pkg === undefined) {
       throw new Error(
-        `No package found.` +
+        `Package "${event.packageName}" not found.` +
           "This is probably a bug in the action, please open an issue",
       );
     }
-    let pkg = packages[0];
-    let newTagRegex = /New tag:/;
+    return { pkg, tag: event.tag };
+  });
 
-    for (let line of changesetPublishOutput.stdout.split("\n")) {
-      let match = line.match(newTagRegex);
-
-      if (match) {
-        releasedPackages.push(pkg);
-        if (createGithubReleases) {
-          const tagName = `v${pkg.packageJson.version}`;
-          await git.pushTag(tagName);
-          await createRelease(octokit, { pkg, tagName });
-        }
-        break;
-      }
-    }
+  if (tool.type === "root" && packages.length === 0) {
+    throw new Error(
+      `No package found.` +
+        "This is probably a bug in the action, please open an issue",
+    );
   }
 
-  if (releasedPackages.length) {
+  if (createGithubReleases || pushGitTags) {
+    await Promise.all(
+      releases.map(async ({ pkg, tag }) => {
+        if (pushGitTags) {
+          await github.pushTag(tag);
+        }
+        if (createGithubReleases) {
+          await createRelease(octokit, { pkg, tagName: tag });
+        }
+      }),
+    );
+  }
+
+  if (releases.length) {
     return {
       published: true,
-      publishedPackages: releasedPackages.map((pkg) => ({
+      publishedPackages: releases.map(({ pkg }) => ({
         name: pkg.packageJson.name,
         version: pkg.packageJson.version,
       })),
@@ -164,24 +258,6 @@ export async function runPublish({
 
   return { published: false, exitCode: changesetPublishOutput.exitCode };
 }
-
-const requireChangesetsCliPkgJson = (cwd: string) => {
-  try {
-    return require(
-      require.resolve("@changesets/cli/package.json", {
-        paths: [cwd],
-      }),
-    );
-  } catch (err) {
-    if (isErrorWithCode(err, "MODULE_NOT_FOUND")) {
-      throw new Error(
-        `Have you forgotten to install \`@changesets/cli\` in "${cwd}"?`,
-        { cause: err },
-      );
-    }
-    throw err;
-  }
-};
 
 type GetMessageOptions = {
   hasPublishScript: boolean;
@@ -254,9 +330,7 @@ export async function getVersionPrBody({
 
 type VersionOptions = {
   script?: string;
-  githubToken: string;
-  git: Git;
-  octokit: Octokit;
+  github: GitHub;
   cwd?: string;
   prTitle?: string;
   commitMessage?: string;
@@ -272,47 +346,30 @@ type RunVersionResult = {
 
 export async function runVersion({
   script,
-  githubToken,
-  git,
-  octokit,
+  github,
   cwd = process.cwd(),
   prTitle = "Version Packages",
   commitMessage = "Version Packages",
   hasPublishScript = false,
   prBodyMaxCharacters = MAX_CHARACTERS_PER_MESSAGE,
-  branch = github.context.ref.replace("refs/heads/", ""),
+  branch = context.ref.replace("refs/heads/", ""),
   prDraft,
 }: VersionOptions): Promise<RunVersionResult> {
+  const { octokit } = github;
   let versionBranch = `changeset-release/${branch}`;
 
   let { preState } = await readChangesetState(cwd);
 
-  await git.prepareBranch(versionBranch);
+  await github.prepareBranch(versionBranch);
 
   let versionsByDirectory = await getVersionsByDirectory(cwd);
 
-  const env = { ...process.env, GITHUB_TOKEN: githubToken };
+  const env = { ...process.env, GITHUB_TOKEN: github.getToken() };
 
   if (script) {
     await exec(script, undefined, { cwd, env });
   } else {
-    let changesetsCliPkgJson = requireChangesetsCliPkgJson(cwd);
-    let cmd = semverLt(changesetsCliPkgJson.version, "2.0.0")
-      ? "bump"
-      : "version";
-    await exec(
-      "node",
-      [
-        require.resolve("@changesets/cli/bin.js", {
-          paths: [cwd],
-        }),
-        cmd,
-      ],
-      {
-        cwd,
-        env,
-      },
-    );
+    await execChangesetsCli(["version"], { cwd, env });
   }
 
   let changedPackages = await getChangedPackages(cwd, versionsByDirectory);
@@ -338,20 +395,13 @@ export async function runVersion({
     !!preState ? ` (${preState.tag})` : ""
   }`;
 
-  /**
-   * Fetch any existing pull requests that are open against the branch,
-   * before we push any changes that may inadvertently close the existing PRs.
-   *
-   * (`@changesets/ghcommit` has to reset the branch to the same commit as the base,
-   * which GitHub will then react to by closing the PRs)
-   */
   const existingPullRequests = await octokit.rest.pulls.list({
-    ...github.context.repo,
+    ...context.repo,
     state: "open",
-    head: `${github.context.repo.owner}:${versionBranch}`,
+    head: `${context.repo.owner}:${versionBranch}`,
     base: branch,
   });
-  core.info(
+  core.debug(
     `Existing pull requests: ${JSON.stringify(
       existingPullRequests.data,
       null,
@@ -359,7 +409,10 @@ export async function runVersion({
     )}`,
   );
 
-  await git.pushChanges({ branch: versionBranch, message: finalCommitMessage });
+  await github.pushChanges({
+    branch: versionBranch,
+    message: finalCommitMessage,
+  });
 
   const changedPackagesInfo = (await changedPackagesInfoPromises)
     .filter((x) => x)
@@ -374,14 +427,14 @@ export async function runVersion({
   });
 
   if (existingPullRequests.data.length === 0) {
-    core.info("creating pull request");
+    core.info("Creating pull request");
     const { data: newPullRequest } = await octokit.rest.pulls.create({
       base: branch,
       head: versionBranch,
       title: finalPrTitle,
       body: prBody,
       draft: prDraft !== undefined,
-      ...github.context.repo,
+      ...context.repo,
     });
 
     return {
@@ -390,7 +443,7 @@ export async function runVersion({
   } else {
     const [pullRequest] = existingPullRequests.data;
 
-    core.info(`updating found pull request #${pullRequest.number}`);
+    core.info(`Updating found pull request #${pullRequest.number}`);
     const convertPullRequestToDraftMutation =
       prDraft === "always"
         ? `
