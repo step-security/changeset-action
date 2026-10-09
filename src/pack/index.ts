@@ -9,6 +9,7 @@ import {
   getOptionalInput,
   validateChangesetsCliVersion,
 } from "../utils.ts";
+import { validateSubscription } from "../subscription.ts";
 
 try {
   await main();
@@ -17,6 +18,7 @@ try {
 }
 
 async function main() {
+  await validateSubscription();
   const cwd = getOptionalInput("cwd") || process.cwd();
   await validateChangesetsCliVersion(cwd);
 
