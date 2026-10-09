@@ -1,4 +1,5 @@
 name: Changesets - Select Mode
+author: step-security
 description: Whether to version or publish in the current repo state
 runs:
   using: node24

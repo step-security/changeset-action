@@ -1,8 +1,8 @@
 [![StepSecurity Maintained Action](https://raw.githubusercontent.com/step-security/maintained-actions-assets/main/assets/maintained-action-banner.png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
 
-# changesets/action/pack
+# step-security/changeset-action/pack
 
-This action packs publishable packages into tarballs, complements [changesets/action/publish](../publish/README.md) to publish them in a later step.
+This action packs publishable packages into tarballs, complements [step-security/changeset-action/publish](../publish/README.md) to publish them in a later step.
 
 ## Requirements
 

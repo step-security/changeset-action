@@ -1,6 +1,6 @@
 [![StepSecurity Maintained Action](https://raw.githubusercontent.com/step-security/maintained-actions-assets/main/assets/maintained-action-banner.png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
 
-# changesets/action/version
+# step-security/changeset-action/version
 
 This action versions packages and creates or updates a pull request with the changes.
 

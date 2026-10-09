@@ -1,6 +1,6 @@
 [![StepSecurity Maintained Action](https://raw.githubusercontent.com/step-security/maintained-actions-assets/main/assets/maintained-action-banner.png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
 
-# changesets/action/select-mode
+# step-security/changeset-action/select-mode
 
 This action selects the mode to run a Changesets workflow:
 

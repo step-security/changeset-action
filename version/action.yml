@@ -1,4 +1,5 @@
 name: Changesets - Version
+author: step-security
 description: Version packages
 runs:
   using: node24
