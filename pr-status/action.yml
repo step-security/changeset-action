@@ -1,4 +1,5 @@
 name: Changesets - PR Status
+author: step-security
 description: Generate the changesets status in PRs
 runs:
   using: node24
