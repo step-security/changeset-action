@@ -25,7 +25,7 @@
     "update-readme": "node ./scripts/update-readme.ts"
   },
   "dependencies": {
-    "@actions/artifact": "^6.2.1",
+    "@actions/artifact": "^6.3.1",
     "@actions/core": "^3.0.1",
     "@actions/exec": "^3.0.0",
     "@actions/github": "^9.1.1",
@@ -37,7 +37,7 @@
     "@manypkg/get-packages": "^3.1.0",
     "@octokit/core": "^7.0.8",
     "@octokit/plugin-throttling": "^11.0.5",
-    "axios": "^1.20.0",
+    "axios": "^1.21.0",
     "human-id": "^4.2.2",
     "markdown-table": "^3.0.4",
     "semver": "^7.8.5",
@@ -54,7 +54,8 @@
     "oxfmt": "^0.72.0",
     "rolldown": "^1.2.12",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0",
     "yaml": "^2.9.1"
   },
   "engines": {
