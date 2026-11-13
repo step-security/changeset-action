@@ -1,20 +1,7 @@
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4"
+reason = "glob@10 (via @actions/artifact > archiver > archiver-utils): only used by archiver-utils file.expand, which is never called; zip.file()/append() only. Awaiting upstream bump"
 
 [[IgnoredVulns]]
-id = "GHSA-g9mf-h72j-4rw9"
-reason = "undici: Fetch API decompression issue; action uses Octokit REST client not fetch()"
-
-[[IgnoredVulns]]
-id = "GHSA-2mjp-6q6p-2qxm"
-reason = "undici: HTTP smuggling requires untrusted intermediary; action only talks to GitHub API"
-
-[[IgnoredVulns]]
-id = "GHSA-vrm6-8vpv-qv8q"
-reason = "undici: WebSocket memory issue; action does not use WebSockets"
-
-[[IgnoredVulns]]
-id = "GHSA-v9p9-hfj2-hcw8"
-reason = "undici: WebSocket client exception; action does not use WebSockets"
-
-[[IgnoredVulns]]
-id = "GHSA-4992-7rv2-5pvq"
-reason = "undici: CRLF injection via upgrade option; not used by @actions/github or @actions/http-client"
+id = "GHSA-g3hv-75wg-m249"
+reason = "minimatch@9 (via glob@10): unreachable as above; also needs attacker-supplied glob patterns, but inputs are file paths from our own pack output. Awaiting upstream bump"

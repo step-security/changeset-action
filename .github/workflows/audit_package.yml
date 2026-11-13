@@ -1,4 +1,4 @@
-name: Yarn Audit Fix Run
+name: Audit Fix Run
 
 on:
   workflow_dispatch:
@@ -8,14 +8,14 @@ on:
         required: false
         default: "main"
       package_manager:
-        description: "Specify package manager (npm or yarn)"
+        description: "Specify package manager (npm, yarn or pnpm)"
         required: false
-        default: "yarn"
+        default: "pnpm"
       script:
         description: "Specify the build script to run"
         required: false
         type: string
-        default: "yarn build"
+        default: "pnpm build"
       node_version:
         description: "Specify Node.js version"
         required: false
@@ -28,9 +28,9 @@ jobs:
   audit-fix:
     uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1
     with:
-      package_manager: ${{ inputs.package_manager || 'yarn' }}
+      package_manager: ${{ inputs.package_manager || 'pnpm' }}
       base_branch: ${{ inputs.base_branch || 'main' }}
-      script: ${{ inputs.script || 'yarn build' }}
+      script: ${{ inputs.script || 'pnpm build' }}
       node_version: ${{ inputs.node_version || '24' }}
 
 permissions:

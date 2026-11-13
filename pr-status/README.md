@@ -1,61 +1,42 @@
-# changesets/action/pr-status
+[![StepSecurity Maintained Action](https://raw.githubusercontent.com/step-security/maintained-actions-assets/main/assets/maintained-action-banner.png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
 
-This action generates the changesets status in PRs, e.g. whether it has changeset files and which packages will be released if the PR is merged.
+# step-security/changeset-action/pr-status
 
-It requires the repo to be checked out, and automatically fetches the PR head ref into a temporary detached worktree in order to infer the changed files and packages. It also requires the [`pull_request_target`](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target) event to be triggered in order to have permissions to comment on the PR and to work in PRs from forks.
+This action generates the changesets status in PRs, for example, whether it has changeset files and which packages will be released if the PR is merged.
 
-You can also use the [`pull_request`](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request) event if you prefer to lock permissions down and not run for PRs from forks. Make sure to add an if check to prevent the action from failing in fork PRs:
+It requires the repo to be checked out, and will automatically fetch the PR head ref into a temporary detached worktree in order to infer the changed files and packages.
 
-```yaml
-jobs:
-  pr-status:
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    # ...
-```
+## Requirements
 
-See the [action metadata](action.yml) for details on the inputs and outputs.
+- Needs repo checked out
+- [Job permissions][job-permissions]: _none_
+- [Workflow triggers][workflow-triggers]:
+  - [`pull_request`][trigger-pull-request]
+  - [`pull_request_target`][trigger-pull-request-target]
 
-> [!WARNING]
-> **Do not run untrusted code** when using the `pull_request_target` event. The example below only checks out code and does not run any code from the PR. Read more about the `pull_request_target` event in the [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target).
+> [!CAUTION]
+> **Do not run untrusted code** when using the `pull_request_target` event.
+>
+> `pull_request_target` can be useful to support PRs from forks, however it enables write permissions by default which can be a security risk if untrusted code is executed and the permissions aren't scoped down.
 
-## Example setup
+[job-permissions]: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idpermissions
+[workflow-triggers]: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+[trigger-pull-request]: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request
+[trigger-pull-request-target]: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target
 
-```yaml
-# .github/workflows/comment-changesets-pr-status.yml
-name: Comment Changesets status in PRs
+## Usage
 
-on:
-  pull_request_target:
+> [!TIP]
+> Check out [the docs](https://changesets.dev/guide/automating#non-blocking) to learn how to set up commenting changesets status on PRs.
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+## API
 
-jobs:
-  pr-status:
-    runs-on: ubuntu-slim
-    permissions:
-      contents: read # to check out files in the repo
-    outputs:
-      comment-body: ${{ steps.pr-status.outputs.comment-body }}
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v6
+<!-- api-start -->
 
-      - name: Generate status
-        id: pr-status
-        uses: changesets/action/pr-status@v1
+Inputs: _none_
 
-  pr-comment:
-    needs: pr-status
-    runs-on: ubuntu-slim
-    permissions:
-      pull-requests: write # to create and update comments on PRs
-    steps:
-      - name: Comment on PR
-        uses: changesets/action/pr-comment@v1
-        with:
-          body: ${{ needs.pr-status.outputs.comment-body }}
-```
+| Outputs        | Description                                                         |
+| -------------- | ------------------------------------------------------------------- |
+| `comment-body` | The generated comment body to present the changesets status in PRs. |
 
-The workflow uses [`@changesets/action/pr-comment`](../pr-comment/README.md), which is a simple GitHub Action to comment on PRs.
+<!-- api-end -->
